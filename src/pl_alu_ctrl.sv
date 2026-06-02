@@ -28,14 +28,15 @@ module pl_alu_ctrl (
 
             2'b01: Operation = 4'd02;   // Branch BEQ  -> SUB
 
-            // parte nova com implementação das novas instruções R-type
             2'b10: begin                // R-type: decodificar Funct
                 case (Funct3)
+                    // parte nova com implementação das novas instruções R-type ==================
                     3'h0: Operation = Funct7[5] ? 4'd02 : 4'd01; // SUB ou ADD
                     3'h1: Operation = 4'd07;                     // SLL   
                     3'h2: Operation = 4'd11;                     // SLT
                     3'h3: Operation = 4'd10;                     // SLTU  
                     3'h4: Operation = 4'd06;                     // XOR   
+                    // ===========================================================================
                     
                     // Se Funct7[5] = 1, é SRA (aritmetico). Se for 0, é SRL (Logico)
                     3'h5: Operation = Funct7[5] ? 4'd09 : 4'd08; // SRA ou SRL 
