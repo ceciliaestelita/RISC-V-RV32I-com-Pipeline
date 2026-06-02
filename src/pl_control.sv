@@ -64,7 +64,7 @@ module pl_control (
                 RegWrite = 1'b1;
                 ALUOp    = 2'b10;
             end
-    // instrucoes I-type novas ================================
+    // parte nova I-type  ====================================
             I_TYPE: begin  
                 ALUSrc   = 1'b1;
                 MemtoReg = 1'b0;
