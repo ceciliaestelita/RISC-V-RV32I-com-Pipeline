@@ -10,6 +10,11 @@
 //   I-type  (0000011): lw
 //   S-type  (0100011): sw
 //   B-type  (1100011): beq
+// ============================================================================
+// instruções novas (R-type e I-type)==========================================
+//   R-type: xor, sll, srl, sra, sltu
+//   I-type (0010011): addi, andi, ori, slti, slli, srli, srai
+// ============================================================================ 
 //
 // Tabela de sinais de controle:
 //   Sinal     | R-type | lw | sw | beq
@@ -38,6 +43,7 @@ module pl_control (
 );
 
     localparam R_TYPE = 7'b0110011;
+    localparam I_TYPE = 7'b0010011;     // parametro novo para add as instruções I-type
     localparam LOAD   = 7'b0000011;
     localparam STORE  = 7'b0100011;
     localparam BRANCH = 7'b1100011;
@@ -58,6 +64,14 @@ module pl_control (
                 RegWrite = 1'b1;
                 ALUOp    = 2'b10;
             end
+    // instrucoes I-type novas ================================
+            I_TYPE: begin  
+                ALUSrc   = 1'b1;
+                MemtoReg = 1'b0;
+                RegWrite = 1'b1;
+                ALUOp    = 2'b10;
+            end
+    // =======================================================
             LOAD: begin
                 ALUSrc   = 1'b1;
                 MemtoReg = 1'b1;
