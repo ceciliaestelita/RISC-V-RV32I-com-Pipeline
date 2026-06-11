@@ -36,23 +36,23 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `XOR`     | R    | 0110011 | ❌ |
-| 2 | `SLL`     | R    | 0110011 | ❌ |
-| 3 | `SRL`     | R    | 0110011 | ❌ |
-| 4 | `SRA`     | R    | 0110011 | ❌ |
-| 5 | `SLTU`    | R    | 0110011 | ❌ |
+| 1 | `XOR`     | R    | 0110011 | ✅ |
+| 2 | `SLL`     | R    | 0110011 | ✅ |
+| 3 | `SRL`     | R    | 0110011 | ✅ |
+| 4 | `SRA`     | R    | 0110011 | ✅ |
+| 5 | `SLTU`    | R    | 0110011 | ✅ |
 
 #### Aritmética, lógica e deslocamentos com imediatos (I-type)
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `ADDI`    | I    | 0010011 | ❌ |
-| 2 | `ANDI`    | I    | 0010011 | ❌ |
-| 3 | `ORI`     | I    | 0010011 | ❌ |
-| 4 | `SLTI`    | I    | 0010011 | ❌ |
-| 5 | `SLLI`    | I    | 0010011 | ❌ |
-| 6 | `SRLI`    | I    | 0010011 | ❌ |
-| 7 | `SRAI`    | I    | 0010011 | ❌ |
+| 1 | `ADDI`    | I    | 0010011 | ✅ |
+| 2 | `ANDI`    | I    | 0010011 | ✅ |
+| 3 | `ORI`     | I    | 0010011 | ✅ |
+| 4 | `SLTI`    | I    | 0010011 | ✅ |
+| 5 | `SLLI`    | I    | 0010011 | ✅ |
+| 6 | `SRLI`    | I    | 0010011 | ✅ |
+| 7 | `SRAI`    | I    | 0010011 | ✅ |
 
 ### Instruções a implementar — Etapa 02
 
