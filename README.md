@@ -30,7 +30,7 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 | J-type             | 2         | 0             | 2        |
 | **Total**          | **37**    | **8**         | **29**   |
 
-### Instruções a implementar — Etapa 01
+### Instruções implementadas — Etapa 01
 
 #### Aritmética, lógica e deslocamentos (R-type)
 
