@@ -3,6 +3,9 @@
 Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em SystemVerilog, baseado nas seções 4.6 a 4.10 de *Computer Organization and Design: RISC-V Edition* (Patterson & Hennessy). O projeto tem como plataforma alvo a placa **DE2-115** (Intel Cyclone IV E) e é estruturado para servir de base para extensões do conjunto de instruções pelos alunos.
 
 ---
+✅ Instruções implementadas e testadas
+☑️ Instruções implementadas
+❌ Instruções não implementadas
 
 ## Instruções suportadas
 
@@ -60,10 +63,10 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `LB`      | I    | 0000011 | ❌ |
-| 2 | `LH`      | I    | 0000011 | ❌ |
-| 3 | `LBU`     | I    | 0000011 | ❌ |
-| 4 | `LHU`     | I    | 0000011 | ❌ |
+| 1 | `LB`      | I    | 0000011 | ☑️ |
+| 2 | `LH`      | I    | 0000011 | ☑️ |
+| 3 | `LBU`     | I    | 0000011 | ☑️ |
+| 4 | `LHU`     | I    | 0000011 | ☑️ |
 
 #### Acesso à memória — stores (S-type)
 
