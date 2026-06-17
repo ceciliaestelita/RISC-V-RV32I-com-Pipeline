@@ -99,6 +99,12 @@ module pl_datapath (
     logic        mmio_sel;
     logic [31:0] dmem_rd, mmio_rd, mem_read_data;
 
+    // mudança da etapa 2 (i-type): sinais pro processamento do LB e LH
+    logic [7:0]  selected_byte;
+    logic [15:0] selected_half;
+    logic [31:0] load_data_processed;
+
+
     // =========================================================================
     // IF -- Busca de instrucao
     // =========================================================================
@@ -340,6 +346,46 @@ module pl_datapath (
 
     assign mem_read_data = mmio_sel ? mmio_rd : dmem_rd;
 
+
+    // =============================================================================================================
+    // mudança da etapa 2 (i-type): alinhamento e extensão de loads
+    // =============================================================================================================
+    // 1. Mux para selecionar qual Byte queremos com base em ex_mem.alu_result[1:0]
+    always_comb begin
+        case (ex_mem.alu_result[1:0])
+            2'b00:   selected_byte = mem_read_data[7:0];
+            2'b01:   selected_byte = mem_read_data[15:8];
+            2'b02:   selected_byte = mem_read_data[23:16];
+            2'b03:   selected_byte = mem_read_data[31:24];
+            default: selected_byte = mem_read_data[7:0];
+        endcase
+    end
+
+    // 2. Mux para selecionar qual Meia-Palavra (Halfword) queremos com base em ex_mem.alu_result[1]
+    always_comb begin
+        case (ex_mem.alu_result[1])
+            1'b0:    selected_half = mem_read_data[15:0];
+            1'b1:    selected_half = mem_read_data[31:16];
+            default: selected_half = mem_read_data[15:0];
+        endcase
+    end
+
+    // 3. Mux final para estender com sinal ou zero de acordo com o funct3
+    always_comb begin
+        case (ex_mem.funct3)
+            3'b000:  load_data_processed = {{24{selected_byte[7]}}, selected_byte}; // LB  (com sinal)
+            3'b001:  load_data_processed = {{16{selected_half[15]}}, selected_half}; // LH  (com sinal)
+            3'b010:  load_data_processed = mem_read_data;                           // LW  (32 bits)
+            3'b100:  load_data_processed = {24'b0, selected_byte};                  // LBU (com zeros)
+            3'b101:  load_data_processed = {16'b0, selected_half};                  // LHU (com zeros)
+            default: load_data_processed = mem_read_data;
+        endcase
+    end
+    // =============================================================================================================
+
+
+
+
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
     assign mem_wr_addr = ex_mem.alu_result[9:2];
@@ -359,7 +405,10 @@ module pl_datapath (
             mem_wb.mem_to_reg <= ex_mem.mem_to_reg;
             mem_wb.reg_write  <= ex_mem.reg_write;
             mem_wb.alu_result <= ex_mem.alu_result;
-            mem_wb.read_data  <= mem_read_data;
+            
+            // mudança etapa 2 (i-type): dado chega processado em vez do bruto
+            mem_wb.read_data  <= load_data_processed;
+
             mem_wb.rd         <= ex_mem.rd;
         end
     end
