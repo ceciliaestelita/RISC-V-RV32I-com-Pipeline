@@ -95,8 +95,8 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `LUI`     | U    | 0110111 | ❌ |
-| 2 | `AUIPC`   | U    | 0010111 | ❌ |
+| 1 | `LUI`     | U    | 0110111 | ☑️ |
+| 2 | `AUIPC`   | U    | 0010111 | ☑️ |
 
 ---
 
