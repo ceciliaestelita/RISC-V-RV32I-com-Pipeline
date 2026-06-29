@@ -372,6 +372,18 @@ python3 serial_dump.py COM3                    # captura o resultado
 
 ---
 
+## Observação
+
+Caso os comandoso do powershell não funcionem só rodar
+
+```bash
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+que você conseguirá rodar os *.ps1
+
+---
+
 ## Recursos
 
 - [Manual RISC-V ISA v2.2](https://riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf)
