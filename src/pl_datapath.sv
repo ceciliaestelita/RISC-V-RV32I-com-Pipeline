@@ -81,6 +81,11 @@ module pl_datapath (
     // Hazard / branch
     logic        stall;
     logic        pc_src;
+    logic jump;              //desvios
+    logic jalr;
+    logic branch_taken;
+    logic [31:0] jump_target;
+    logic [31:0] jalr_target;
     logic [31:0] branch_target;
 
     // ID
@@ -113,12 +118,19 @@ module pl_datapath (
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)      pc_reg <= 32'b0;
         else if (pc_src) pc_reg <= branch_target;   // branch tem prioridade
+        else if (jump && !jalr) pc_reg <= jump_target;      //desvios
+        else if (jump && jalr)  pc_reg <= jalr_target;
         else if (!stall) pc_reg <= pc_plus4;
         // else stall: PC mantido
     end
+    
 
     assign PC       = pc_reg;
     assign pc_plus4 = pc_reg + 32'd4;
+    assign jump_target = id_ex.pc + id_ex.imm_ext;
+    assign jalr_target = id_ex.rd1 + id_ex.imm_ext;
+    assign jump_target = id_ex.pc + id_ex.imm_ext;              //desvios
+    assign jalr_target = id_ex.rs1_data + id_ex.imm_ext;
 
     pl_imem imem (
         .addr  (pc_reg[9:2]),
@@ -132,7 +144,7 @@ module pl_datapath (
         if (!rst_n) begin                    // reset assicrono (unico sinal na lista)
             if_id.pc    <= 32'b0;
             if_id.instr <= 32'b0;
-        end else if (pc_src) begin           // flush sincrono: branch taken
+        end else if (pc_src || id_ex.jump) begin           // flush sincrono: branch taken
             if_id.pc    <= 32'b0;
             if_id.instr <= 32'b0;
         end else if (!stall) begin           // avanco normal
@@ -157,7 +169,11 @@ module pl_datapath (
     );
 
     // Dado de write-back (mux WB): usado tambem pelo forwarding MEM/WB->EX
-    assign wb_data = mem_wb.mem_to_reg ? mem_wb.read_data : mem_wb.alu_result;
+    assign wb_data = mem_wb.jump ?      //desvios(pc+4)
+                 mem_wb.pc_plus4 :
+                 (mem_wb.mem_to_reg ?
+                 mem_wb.read_data :
+                 mem_wb.alu_result);
 
     pl_regfile regfile (
         .clk       (clk),
@@ -192,6 +208,8 @@ module pl_datapath (
             id_ex.mem_write  <= 1'b0;
             id_ex.alu_op     <= 2'b00;
             id_ex.branch     <= 1'b0;
+            id_ex.jump       <= 1'b0;
+            id_ex.jalr       <= 1'b0;
             id_ex.pc         <= 32'b0;
             id_ex.rd1        <= 32'b0;
             id_ex.rd2        <= 32'b0;
@@ -201,7 +219,7 @@ module pl_datapath (
             id_ex.imm_ext    <= 32'b0;
             id_ex.funct3     <= 3'b0;
             id_ex.funct7     <= 7'b0;
-        end else if (stall || pc_src) begin    // NOP sincrono: load-use ou branch
+        end else if (stall || pc_src || id_ex.jump) begin    // NOP sincrono: load-use ou branch
             id_ex.alu_src    <= 1'b0;
             id_ex.mem_to_reg <= 1'b0;
             id_ex.reg_write  <= 1'b0;
@@ -209,6 +227,8 @@ module pl_datapath (
             id_ex.mem_write  <= 1'b0;
             id_ex.alu_op     <= 2'b00;
             id_ex.branch     <= 1'b0;
+            id_ex.jump       <= 1'b0;       //ddesvios
+            id_ex.jalr       <= 1'b0;
             id_ex.pc         <= 32'b0;
             id_ex.rd1        <= 32'b0;
             id_ex.rd2        <= 32'b0;
@@ -226,6 +246,8 @@ module pl_datapath (
             id_ex.mem_write  <= MemWrite;
             id_ex.alu_op     <= ALUOp;
             id_ex.branch     <= Branch;
+            id_ex.jump       <= Jump;
+            id_ex.jalr       <= Jalr;
             id_ex.pc         <= if_id.pc;
             id_ex.rd1        <= rd1;
             id_ex.rd2        <= rd2;
@@ -288,7 +310,40 @@ module pl_datapath (
 
     // Branch resolvido no estagio EX (flush 2 instrucoes se taken)
     assign branch_target = id_ex.pc + id_ex.imm_ext;
-    assign pc_src        = id_ex.branch && zero;
+
+    always_comb begin
+
+        branch_taken = 1'b0;
+
+        case(id_ex.funct3)
+
+            3'b000: // BEQ
+                branch_taken = (id_ex.rd1 == id_ex.rd2);
+
+            3'b001: // BNE
+                branch_taken = (id_ex.rd1 != id_ex.rd2);
+
+            3'b100: // BLT
+                branch_taken = ($signed(id_ex.rd1) < $signed(id_ex.rd2));
+
+            3'b101: // BGE
+                branch_taken = ($signed(id_ex.rd1) >= $signed(id_ex.rd2));
+
+            3'b110: // BLTU
+                branch_taken = (id_ex.rd1 < id_ex.rd2);
+
+            3'b111: // BGEU
+                branch_taken = (id_ex.rd1 >= id_ex.rd2);
+
+            default:
+                branch_taken = 1'b0;
+
+    endcase
+
+end
+
+
+assign pc_src = id_ex.branch && branch_taken;
 
     // =========================================================================
     // Registrador EX/MEM
@@ -300,6 +355,7 @@ module pl_datapath (
             ex_mem.mem_read    <= 1'b0;
             ex_mem.mem_write   <= 1'b0;
             ex_mem.alu_result  <= 32'b0;
+            ex_mem.pc_plus4    <= id_ex.pc + 32'd4;     //desvios
             ex_mem.write_data  <= 32'b0;
             ex_mem.rd          <= 5'b0;
             ex_mem.funct3      <= 3'b0;
@@ -312,6 +368,7 @@ module pl_datapath (
             ex_mem.write_data  <= fwd_srcb;   // rs2 adiantado (para SW/MMIO)
             ex_mem.rd          <= id_ex.rd;
             ex_mem.funct3      <= id_ex.funct3;
+            ex_mem.jump        <= id_ex.jump;
         end
     end
 
@@ -405,6 +462,9 @@ module pl_datapath (
             mem_wb.mem_to_reg <= ex_mem.mem_to_reg;
             mem_wb.reg_write  <= ex_mem.reg_write;
             mem_wb.alu_result <= ex_mem.alu_result;
+            mem_wb.pc_plus4 <= ex_mem.pc_plus4;
+            mem_wb.jump <= ex_mem.jump;
+
             
             // mudança etapa 2 (i-type): dado chega processado em vez do bruto
             mem_wb.read_data  <= load_data_processed;
