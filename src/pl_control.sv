@@ -39,7 +39,9 @@ module pl_control (
     output logic       MemRead,
     output logic       MemWrite,
     output logic       Branch,
-    output logic [1:0] ALUOp
+    output logic [1:0] ALUOp,
+    output logic       Jump,        //desvios
+    output logic       Jalr
 );
 
     localparam R_TYPE = 7'b0110011;
@@ -47,6 +49,8 @@ module pl_control (
     localparam LOAD   = 7'b0000011;
     localparam STORE  = 7'b0100011;
     localparam BRANCH = 7'b1100011;
+    localparam JAL    = 7'b1101111;       //desvios
+    localparam JALR   = 7'b1100111;
 
     always_comb begin
         ALUSrc   = 1'b0;
@@ -55,6 +59,8 @@ module pl_control (
         MemRead  = 1'b0;
         MemWrite = 1'b0;
         Branch   = 1'b0;
+        Jump     = 1'b0;   // desvios
+        Jalr     = 1'b0; 
         ALUOp    = 2'b00;
 
         case (Opcode)
@@ -88,7 +94,17 @@ module pl_control (
                 Branch   = 1'b1;
                 ALUOp    = 2'b01;
             end
-            default: ; // sinais permanecem em zero (seguro)
+            JAL: begin
+                Jump = 1;
+                RegWrite = 1;
+            end
+            JALR: begin
+                Jalr     = 1'b1;
+                Jump     = 1'b1;
+                RegWrite = 1'b1;
+                ALUSrc   = 1'b1;
+            end
+                    default: ; // sinais permanecem em zero (seguro)
         endcase
     end
 
