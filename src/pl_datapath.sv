@@ -369,11 +369,41 @@ module pl_datapath (
     // =========================================================================
     assign mmio_sel = ex_mem.alu_result[10];
 
+    // --- NOVA LÓGICA DE STORES (SB, SH, SW) ---
+    // =========================================================================
+    logic [1:0]  wr_offset;
+    logic [31:0] dmem_write_data_formatted;
+
+    assign wr_offset = ex_mem.alu_result[1:0];
+
+    always_comb begin
+        case (ex_mem.funct3)
+            3'b000: begin // SB (Store Byte)
+                case (wr_offset)
+                    2'b00: dmem_write_data_formatted = {dmem_rd[31:8],  ex_mem.write_data[7:0]};
+                    2'b01: dmem_write_data_formatted = {dmem_rd[31:16], ex_mem.write_data[7:0], dmem_rd[7:0]};
+                    2'b10: dmem_write_data_formatted = {dmem_rd[31:24], ex_mem.write_data[7:0], dmem_rd[15:0]};
+                    2'b11: dmem_write_data_formatted = {ex_mem.write_data[7:0], dmem_rd[23:0]};
+                endcase
+            end
+            3'b001: begin // SH (Store Halfword)
+                case (wr_offset[1])
+                    1'b0:  dmem_write_data_formatted = {dmem_rd[31:16], ex_mem.write_data[15:0]};
+                    1'b1:  dmem_write_data_formatted = {ex_mem.write_data[15:0], dmem_rd[15:0]};
+                endcase
+            end
+            3'b010: begin // SW (Store Word)
+                dmem_write_data_formatted = ex_mem.write_data;
+            end
+            default: dmem_write_data_formatted = ex_mem.write_data;
+        endcase
+    end
+
     pl_dmem dmem (
         .clk       (clk),
         .MemWrite  (ex_mem.mem_write & ~mmio_sel),
         .addr      (ex_mem.alu_result[9:2]),
-        .WriteData (ex_mem.write_data),
+        .WriteData (dmem_write_data_formatted), //dado de escrita formatado (SB/SH/SW)
         .ReadData  (dmem_rd)
     );
 
@@ -383,7 +413,7 @@ module pl_datapath (
         .MemWrite  (ex_mem.mem_write &  mmio_sel),
         .MemRead   (ex_mem.mem_read  &  mmio_sel),
         .addr      (ex_mem.alu_result[4:2]),
-        .WriteData (ex_mem.write_data),
+        .WriteData (dmem_write_data_formatted), //dado de escrita formatado (SB/SH/SW)
         .SW        (SW),
         .KEY       (KEY),
         .ReadData  (mmio_rd),
@@ -435,7 +465,7 @@ module pl_datapath (
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
     assign mem_wr_addr = ex_mem.alu_result[9:2];
-    assign mem_wr_data = ex_mem.write_data;
+    assign mem_wr_data = dmem_write_data_formatted; //dado de escrita formatado (SB/SH/SW)
 
     // =========================================================================
     // Registrador MEM/WB
