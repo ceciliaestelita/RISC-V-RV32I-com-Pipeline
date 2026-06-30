@@ -45,6 +45,8 @@ module pl_control (
     localparam I_TYPE = 7'b0010011;
     localparam LUI   = 7'b0110111;
     localparam AUIPC = 7'b0010111;
+    localparam JAL  = 7'b1101111;
+    localparam JALR = 7'b1100111;
 
     always_comb begin
         ALUSrcA  = 2'b00; // Valor por defeito (usa rs1)
@@ -98,6 +100,27 @@ module pl_control (
                 RegWrite = 1'b1;
                 ALUOp    = 2'b00; // Força a ALU a somar (PC + Imediato)
             end
+
+            JAL: begin
+                ALUSrc   = 1'b1;
+                MemtoReg = 1'b0; // O dado virá do "resultado da ALU" desviado
+                RegWrite = 1'b1;
+                MemRead  = 1'b0;
+                MemWrite = 1'b0;
+                Branch   = 1'b1; // Ativa a infraestrutura de branch
+                ALUOp    = 2'b00; // Código JAL
+            end
+           
+            JALR: begin
+                ALUSrc   = 1'b1;
+                MemtoReg = 1'b0;
+                RegWrite = 1'b1;
+                MemRead  = 1'b0;
+                MemWrite = 1'b0;
+                Branch   = 1'b1; // Ativa a infraestrutura de branch
+                ALUOp    = 2'b11; // Código JALR
+            end
+
             default: ; // sinais permanecem em zero (seguro)
         endcase
     end
