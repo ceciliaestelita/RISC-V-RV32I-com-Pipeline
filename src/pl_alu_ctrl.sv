@@ -30,19 +30,26 @@ module pl_alu_ctrl (
 
             2'b10: begin                // R-type: decodificar Funct
                 case (Funct3)
-                    // parte nova com implementação das novas instruções R-type ==================
                     3'h0: Operation = Funct7[5] ? 4'd02 : 4'd01; // SUB ou ADD
-                    3'h1: Operation = 4'd07;                     // SLL   
-                    3'h2: Operation = 4'd11;                     // SLT
-                    3'h3: Operation = 4'd10;                     // SLTU  
-                    3'h4: Operation = 4'd06;                     // XOR   
-                    // ===========================================================================
-                    
-                    // Se Funct7[5] = 1, é SRA (aritmetico). Se for 0, é SRL (Logico)
-                    3'h5: Operation = Funct7[5] ? 4'd09 : 4'd08; // SRA ou SRL 
-                    
-                    3'h6: Operation = 4'd04;                     // OR
-                    3'h7: Operation = 4'd05;                     // AND
+                    3'h6: Operation = 4'd04;  // OR
+                    3'h7: Operation = 4'd05;  // AND
+                    3'h2: Operation = 4'd11;  // SLT
+                    3'h4: Operation = 4'd06;  // XOR
+                    3'h1: Operation = 4'd07;  // SLL
+                    3'h3: Operation = 4'd12;  // SLTU
+                    3'h5: Operation = Funct7[5] ? 4'd09 : 4'd08; // SRA ou SRL
+                    default: Operation = 4'd01;
+                endcase
+            end
+            2'b11: begin                // I-type: decodificar Funct3
+                case (Funct3)
+                    3'h0: Operation = 4'd01;  // ADDI
+                    3'h2: Operation = 4'd11;  // SLTI
+                    3'h4: Operation = 4'd06;  // XORI
+                    3'h6: Operation = 4'd04;  // ORI
+                    3'h7: Operation = 4'd05;  // ANDI
+                    3'h1: Operation = 4'd07;  // SLLI
+                    3'h5: Operation = Funct7[5] ? 4'd09 : 4'd08; // SRAI ou SRLI
                     default: Operation = 4'd01;
                 endcase
             end

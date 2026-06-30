@@ -10,11 +10,6 @@
 //   I-type  (0000011): lw
 //   S-type  (0100011): sw
 //   B-type  (1100011): beq
-// ============================================================================
-// instruções novas (R-type e I-type)==========================================
-//   R-type: xor, sll, srl, sra, sltu
-//   I-type (0010011): addi, andi, ori, slti, slli, srli, srai
-// ============================================================================ 
 //
 // Tabela de sinais de controle:
 //   Sinal     | R-type | lw | sw | beq
@@ -33,34 +28,32 @@
 
 module pl_control (
     input  logic [6:0] Opcode,
+    output logic [1:0] ALUSrcA, // NOVO SINAL para lui
     output logic       ALUSrc,
     output logic       MemtoReg,
     output logic       RegWrite,
     output logic       MemRead,
     output logic       MemWrite,
     output logic       Branch,
-    output logic [1:0] ALUOp,
-    output logic       Jump,        //desvios
-    output logic       Jalr
+    output logic [1:0] ALUOp
 );
 
     localparam R_TYPE = 7'b0110011;
-    localparam I_TYPE = 7'b0010011;     // parametro novo para add as instruções I-type
     localparam LOAD   = 7'b0000011;
     localparam STORE  = 7'b0100011;
     localparam BRANCH = 7'b1100011;
-    localparam JAL    = 7'b1101111;       //desvios
-    localparam JALR   = 7'b1100111;
+    localparam I_TYPE = 7'b0010011;
+    localparam LUI   = 7'b0110111;
+    localparam AUIPC = 7'b0010111;
 
     always_comb begin
+        ALUSrcA  = 2'b00; // Valor por defeito (usa rs1)
         ALUSrc   = 1'b0;
         MemtoReg = 1'b0;
         RegWrite = 1'b0;
         MemRead  = 1'b0;
         MemWrite = 1'b0;
         Branch   = 1'b0;
-        Jump     = 1'b0;   // desvios
-        Jalr     = 1'b0; 
         ALUOp    = 2'b00;
 
         case (Opcode)
@@ -70,17 +63,16 @@ module pl_control (
                 RegWrite = 1'b1;
                 ALUOp    = 2'b10;
             end
-    // parte nova I-type  ====================================
-            I_TYPE: begin  
+            I_TYPE: begin
                 ALUSrc   = 1'b1;
-                MemtoReg = 1'b0;
+                MemtoReg = 1'b0; // CORRIGIDO: 0 = Resultado vem da ALU
                 RegWrite = 1'b1;
-                ALUOp    = 2'b10;
+                MemRead  = 1'b0;
+                ALUOp    = 2'b11;                
             end
-    // =======================================================
             LOAD: begin
                 ALUSrc   = 1'b1;
-                MemtoReg = 1'b1;
+                MemtoReg = 1'b1; // CORRIGIDO: 1 = Resultado vem da Memória de Dados
                 RegWrite = 1'b1;
                 MemRead  = 1'b1;
                 ALUOp    = 2'b00;
@@ -94,17 +86,19 @@ module pl_control (
                 Branch   = 1'b1;
                 ALUOp    = 2'b01;
             end
-            JAL: begin
-                Jump = 1;
-                RegWrite = 1;
-            end
-            JALR: begin
-                Jalr     = 1'b1;
-                Jump     = 1'b1;
+            LUI: begin
+                ALUSrcA  = 2'b10; // SrcA = 0
+                ALUSrc   = 1'b1;  // SrcB = Imediato
                 RegWrite = 1'b1;
-                ALUSrc   = 1'b1;
+                ALUOp    = 2'b00; // Força a ALU a somar (0 + Imediato)
             end
-                    default: ; // sinais permanecem em zero (seguro)
+            AUIPC: begin
+                ALUSrcA  = 2'b01; // SrcA = PC
+                ALUSrc   = 1'b1;  // SrcB = Imediato
+                RegWrite = 1'b1;
+                ALUOp    = 2'b00; // Força a ALU a somar (PC + Imediato)
+            end
+            default: ; // sinais permanecem em zero (seguro)
         endcase
     end
 

@@ -44,6 +44,7 @@ module pl_cpu (
     // Sinais internos entre modulos
     // -------------------------------------------------------------------------
     logic [6:0] opcode;
+    logic [1:0] ALUSrcA; // <--- NOVO SINAL (Adicionado aqui)
 
     logic       ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch;
     logic [1:0] ALUOp;
@@ -58,6 +59,7 @@ module pl_cpu (
     // -------------------------------------------------------------------------
     pl_control ctrl (
         .Opcode   (opcode),
+        .ALUSrcA  (ALUSrcA),
         .ALUSrc   (ALUSrc),
         .MemtoReg (MemtoReg),
         .RegWrite (RegWrite),
@@ -83,6 +85,7 @@ module pl_cpu (
     pl_datapath datapath (
         .clk          (clk),
         .rst_n        (rst_n),
+        .ALUSrcA      (ALUSrcA),
         .ALUSrc       (ALUSrc),
         .MemtoReg     (MemtoReg),
         .RegWrite     (RegWrite),

@@ -29,6 +29,7 @@ module pl_datapath (
     input  logic        rst_n,
 
     // Sinais de controle vindos do estagio ID (pl_control)
+    input  logic [1:0]  ALUSrcA,
     input  logic        ALUSrc,
     input  logic        MemtoReg,
     input  logic        RegWrite,
@@ -98,12 +99,6 @@ module pl_datapath (
     // MEM
     logic        mmio_sel;
     logic [31:0] dmem_rd, mmio_rd, mem_read_data;
-
-    // mudança da etapa 2 (i-type): sinais pro processamento do LB e LH
-    logic [7:0]  selected_byte;
-    logic [15:0] selected_half;
-    logic [31:0] load_data_processed;
-
 
     // =========================================================================
     // IF -- Busca de instrucao
@@ -184,7 +179,8 @@ module pl_datapath (
     // Registrador ID/EX
     // =========================================================================
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin                      // reset assicrono (unico sinal na lista)
+        if (!rst_n) begin      
+            id_ex.alu_src_a  <= 2'b00;                // reset assicrono (unico sinal na lista)
             id_ex.alu_src    <= 1'b0;
             id_ex.mem_to_reg <= 1'b0;
             id_ex.reg_write  <= 1'b0;
@@ -201,7 +197,8 @@ module pl_datapath (
             id_ex.imm_ext    <= 32'b0;
             id_ex.funct3     <= 3'b0;
             id_ex.funct7     <= 7'b0;
-        end else if (stall || pc_src) begin    // NOP sincrono: load-use ou branch
+        end else if (stall || pc_src) begin
+            id_ex.alu_src_a  <= 2'b00;    // NOP sincrono: load-use ou branch
             id_ex.alu_src    <= 1'b0;
             id_ex.mem_to_reg <= 1'b0;
             id_ex.reg_write  <= 1'b0;
@@ -219,6 +216,7 @@ module pl_datapath (
             id_ex.funct3     <= 3'b0;
             id_ex.funct7     <= 7'b0;
         end else begin
+            id_ex.alu_src_a  <= ALUSrcA;
             id_ex.alu_src    <= ALUSrc;
             id_ex.mem_to_reg <= MemtoReg;
             id_ex.reg_write  <= RegWrite;
@@ -243,7 +241,7 @@ module pl_datapath (
     assign Funct7_EX = id_ex.funct7;
     assign ALUOp_EX  = id_ex.alu_op;
 
-    // =========================================================================
+// =========================================================================
     // EX -- Forwarding, ALU, resolucao de branch
     // =========================================================================
     pl_forward forward (
@@ -275,20 +273,72 @@ module pl_datapath (
         endcase
     end
 
+    // Mux ALUSrcA para decidir a entrada A da ALU (U-type suporte)
+    logic [31:0] alu_srca_final;
+    always_comb begin
+        case (id_ex.alu_src_a)
+            2'b01:   alu_srca_final = id_ex.pc;           // AUIPC usa o PC
+            2'b10:   alu_srca_final = 32'b0;              // LUI usa Zero
+            default: alu_srca_final = fwd_srca;           // Normal (rs1 via forwarding)
+        endcase
+    end
+
     // Mux ALUSrc: imediato ou registrador
     assign alu_srcb = id_ex.alu_src ? id_ex.imm_ext : fwd_srcb;
 
+    // Fio para capturar a saída bruta da ALU
+    logic [31:0] alu_result_raw;
+
     pl_alu alu (
-        .SrcA      (fwd_srca),
+        .SrcA      (alu_srca_final),
         .SrcB      (alu_srcb),
         .Operation (ALU_CC),
-        .ALUResult (alu_result),
+        .ALUResult (alu_result_raw), // <--- MODIFICADO: Liga no fio bruto
         .Zero      (zero)
     );
 
-    // Branch resolvido no estagio EX (flush 2 instrucoes se taken)
-    assign branch_target = id_ex.pc + id_ex.imm_ext;
-    assign pc_src        = id_ex.branch && zero;
+    // =========================================================================
+    // Lógica de JAL e JALR (Saltos incondicionais e salvamento do retorno)
+    // =========================================================================
+    logic is_jal, is_jalr;
+
+    // Identificamos os jumps pelo ALUOp combinado com o Branch=1
+    assign is_jal  = id_ex.branch && (id_ex.alu_op == 2'b00);
+    assign is_jalr = id_ex.branch && (id_ex.alu_op == 2'b11);
+
+    // NOVO: Mux que salva PC+4 no registrador de destino se for Jump. 
+    // Caso contrário, salva o resultado normal da ALU.
+    logic [31:0] alu_result;
+    assign alu_result = (is_jal || is_jalr) ? (id_ex.pc + 4) : alu_result_raw;
+
+
+    // =========================================================================
+    // Comparador de Branch Dedicado e Cálculo de Alvo
+    // =========================================================================
+    logic branch_condition_met;
+    
+    always_comb begin
+        branch_condition_met = 1'b0; // Valor por defeito
+        
+        if (id_ex.branch) begin
+            case (id_ex.funct3)
+                3'b000: branch_condition_met = (fwd_srca == fwd_srcb);                   // BEQ
+                3'b001: branch_condition_met = (fwd_srca != fwd_srcb);                   // BNE
+                3'b100: branch_condition_met = ($signed(fwd_srca) < $signed(fwd_srcb));  // BLT
+                3'b101: branch_condition_met = ($signed(fwd_srca) >= $signed(fwd_srcb)); // BGE
+                3'b110: branch_condition_met = (fwd_srca < fwd_srcb);                    // BLTU
+                3'b111: branch_condition_met = (fwd_srca >= fwd_srcb);                   // BGEU
+                default: branch_condition_met = 1'b0;
+            endcase
+        end
+    end
+
+    // O alvo do JALR é (rs1 + imediato) com o bit 0 limpo.
+    // Para JAL e Branches normais, o alvo é (PC + imediato).
+    assign branch_target = is_jalr ? ((fwd_srca + id_ex.imm_ext) & 32'hFFFFFFFE) : (id_ex.pc + id_ex.imm_ext);
+    
+    // O PC deve desviar se a condição do branch for verdadeira OU se for JAL/JALR
+    assign pc_src = branch_condition_met || is_jal || is_jalr;
 
     // =========================================================================
     // Registrador EX/MEM
@@ -344,47 +394,44 @@ module pl_datapath (
         .UART_RXD  (UART_RXD)
     );
 
-    assign mem_read_data = mmio_sel ? mmio_rd : dmem_rd;
 
+    // --- NOVA LÓGICA DE LOADS (LB, LH, LW, LBU, LHU) ---
+    logic [1:0]  offset;
+    logic [7:0]  byte_read;
+    logic [15:0] hw_read;
+    logic [31:0] dmem_read_data_formatted;
+    
+    // O offset são os 2 bits menos significativos do endereço calculado
+    assign offset = ex_mem.alu_result[1:0];
 
-    // =============================================================================================================
-    // mudança da etapa 2 (i-type): alinhamento e extensão de loads
-    // =============================================================================================================
-    // 1. Mux para selecionar qual Byte queremos com base em ex_mem.alu_result[1:0]
     always_comb begin
-        case (ex_mem.alu_result[1:0])
-            2'b00:   selected_byte = mem_read_data[7:0];
-            2'b01:   selected_byte = mem_read_data[15:8];
-            2'b02:   selected_byte = mem_read_data[23:16];
-            2'b03:   selected_byte = mem_read_data[31:24];
-            default: selected_byte = mem_read_data[7:0];
+        // 1. Extrair o byte correto baseado no offset
+        case (offset)
+            2'b00: byte_read = dmem_rd[7:0];
+            2'b01: byte_read = dmem_rd[15:8];
+            2'b10: byte_read = dmem_rd[23:16];
+            2'b11: byte_read = dmem_rd[31:24];
         endcase
-    end
 
-    // 2. Mux para selecionar qual Meia-Palavra (Halfword) queremos com base em ex_mem.alu_result[1]
-    always_comb begin
-        case (ex_mem.alu_result[1])
-            1'b0:    selected_half = mem_read_data[15:0];
-            1'b1:    selected_half = mem_read_data[31:16];
-            default: selected_half = mem_read_data[15:0];
+        // 2. Extrair a halfword correta baseado no bit 1 do offset
+        case (offset[1])
+            1'b0: hw_read = dmem_rd[15:0];
+            1'b1: hw_read = dmem_rd[31:16];
         endcase
-    end
 
-    // 3. Mux final para estender com sinal ou zero de acordo com o funct3
-    always_comb begin
+        // 3. Formatar o dado final baseado na instrução (funct3)
         case (ex_mem.funct3)
-            3'b000:  load_data_processed = {{24{selected_byte[7]}}, selected_byte}; // LB  (com sinal)
-            3'b001:  load_data_processed = {{16{selected_half[15]}}, selected_half}; // LH  (com sinal)
-            3'b010:  load_data_processed = mem_read_data;                           // LW  (32 bits)
-            3'b100:  load_data_processed = {24'b0, selected_byte};                  // LBU (com zeros)
-            3'b101:  load_data_processed = {16'b0, selected_half};                  // LHU (com zeros)
-            default: load_data_processed = mem_read_data;
+            3'b000: dmem_read_data_formatted = {{24{byte_read[7]}}, byte_read}; // LB  (Extensão de Sinal)
+            3'b001: dmem_read_data_formatted = {{16{hw_read[15]}}, hw_read};    // LH  (Extensão de Sinal)
+            3'b010: dmem_read_data_formatted = dmem_rd;                         // LW  (Palavra Inteira)
+            3'b100: dmem_read_data_formatted = {24'b0, byte_read};              // LBU (Extensão com Zeros)
+            3'b101: dmem_read_data_formatted = {16'b0, hw_read};                // LHU (Extensão com Zeros)
+            default: dmem_read_data_formatted = dmem_rd;
         endcase
     end
-    // =============================================================================================================
 
-
-
+    // Seleciona o dado final formatado em vez do dado cru da memória
+    assign mem_read_data = mmio_sel ? mmio_rd : dmem_read_data_formatted;
 
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
@@ -405,10 +452,7 @@ module pl_datapath (
             mem_wb.mem_to_reg <= ex_mem.mem_to_reg;
             mem_wb.reg_write  <= ex_mem.reg_write;
             mem_wb.alu_result <= ex_mem.alu_result;
-            
-            // mudança etapa 2 (i-type): dado chega processado em vez do bruto
-            mem_wb.read_data  <= load_data_processed;
-
+            mem_wb.read_data  <= mem_read_data;
             mem_wb.rd         <= ex_mem.rd;
         end
     end

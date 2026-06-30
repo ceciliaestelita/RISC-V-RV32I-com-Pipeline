@@ -2,9 +2,7 @@
 
 Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em SystemVerilog, baseado nas seções 4.6 a 4.10 de *Computer Organization and Design: RISC-V Edition* (Patterson & Hennessy). O projeto tem como plataforma alvo a placa **DE2-115** (Intel Cyclone IV E) e é estruturado para servir de base para extensões do conjunto de instruções pelos alunos.
 
-✅ Instruções implementadas e testadas  
-☑️ Instruções implementadas  
-❌ Instruções não implementadas  
+---
 
 ## Instruções suportadas
 
@@ -23,38 +21,38 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | Categoria          | Total ISA | Implementadas | Faltando |
 |--------------------|:---------:|:-------------:|:--------:|
-| R-type             | 10        | 10            |          |
-| I-type aritmético  | 9         | 9             |          |
-| I-type load        | 5         | 5             |          |
+| R-type             | 10        | 5             | 5        |
+| I-type aritmético  | 9         | 0             | 9        |
+| I-type load        | 5         | 1 (LW)        | 4        |
 | S-type             | 3         | 1 (SW)        | 2        |
 | B-type             | 6         | 1 (BEQ)       | 5        |
-| U-type             | 2         | 2             |          |
+| U-type             | 2         | 0             | 2        |
 | J-type             | 2         | 0             | 2        |
-| **Total**          | **37**    | **26**        | **9**    |
+| **Total**          | **37**    | **8**         | **29**   |
 
-### Instruções implementadas — Etapa 01
+### Instruções a implementar — Etapa 01
 
 #### Aritmética, lógica e deslocamentos (R-type)
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `XOR`     | R    | 0110011 | ✅ |
-| 2 | `SLL`     | R    | 0110011 | ✅ |
-| 3 | `SRL`     | R    | 0110011 | ✅ |
-| 4 | `SRA`     | R    | 0110011 | ✅ |
-| 5 | `SLTU`    | R    | 0110011 | ✅ |
+| 1 | `XOR`     | R    | 0110011 | ❌ |
+| 2 | `SLL`     | R    | 0110011 | ❌ |
+| 3 | `SRL`     | R    | 0110011 | ❌ |
+| 4 | `SRA`     | R    | 0110011 | ❌ |
+| 5 | `SLTU`    | R    | 0110011 | ❌ |
 
 #### Aritmética, lógica e deslocamentos com imediatos (I-type)
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `ADDI`    | I    | 0010011 | ✅ |
-| 2 | `ANDI`    | I    | 0010011 | ✅ |
-| 3 | `ORI`     | I    | 0010011 | ✅ |
-| 4 | `SLTI`    | I    | 0010011 | ✅ |
-| 5 | `SLLI`    | I    | 0010011 | ✅ |
-| 6 | `SRLI`    | I    | 0010011 | ✅ |
-| 7 | `SRAI`    | I    | 0010011 | ✅ |
+| 1 | `ADDI`    | I    | 0010011 | ❌ |
+| 2 | `ANDI`    | I    | 0010011 | ❌ |
+| 3 | `ORI`     | I    | 0010011 | ❌ |
+| 4 | `SLTI`    | I    | 0010011 | ❌ |
+| 5 | `SLLI`    | I    | 0010011 | ❌ |
+| 6 | `SRLI`    | I    | 0010011 | ❌ |
+| 7 | `SRAI`    | I    | 0010011 | ❌ |
 
 ### Instruções a implementar — Etapa 02
 
@@ -62,10 +60,10 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `LB`      | I    | 0000011 | ✅ |
-| 2 | `LH`      | I    | 0000011 | ✅ |
-| 3 | `LBU`     | I    | 0000011 | ✅ |
-| 4 | `LHU`     | I    | 0000011 | ✅ |
+| 1 | `LB`      | I    | 0000011 | ❌ |
+| 2 | `LH`      | I    | 0000011 | ❌ |
+| 3 | `LBU`     | I    | 0000011 | ❌ |
+| 4 | `LHU`     | I    | 0000011 | ❌ |
 
 #### Acesso à memória — stores (S-type)
 
@@ -78,25 +76,25 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `BNE`     | B    | 1100011 | ☑️ |
-| 2 | `BLT`     | B    | 1100011 | ☑️ |
-| 3 | `BGE`     | B    | 1100011 | ☑️ |
-| 4 | `BLTU`    | B    | 1100011 | ☑️ |
-| 5 | `BGEU`    | B    | 1100011 | ☑️ |
+| 1 | `BNE`     | B    | 1100011 | ❌ |
+| 2 | `BLT`     | B    | 1100011 | ❌ |
+| 3 | `BGE`     | B    | 1100011 | ❌ |
+| 4 | `BLTU`    | B    | 1100011 | ❌ |
+| 5 | `BGEU`    | B    | 1100011 | ❌ |
 
 #### Jumps (J-type)
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `JAL`     | J    | 1101111 | ☑️ |
-| 2 | `JALR`    | I    | 1100111 | ☑️ |
+| 1 | `JAL`     | J    | 1101111 | ❌ |
+| 2 | `JALR`    | I    | 1100111 | ❌ |
 
 #### Imediato superior (U-type)
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `LUI`     | U    | 0110111 | ✅ |
-| 2 | `AUIPC`   | U    | 0010111 | ✅ |
+| 1 | `LUI`     | U    | 0110111 | ❌ |
+| 2 | `AUIPC`   | U    | 0010111 | ❌ |
 
 ---
 
@@ -369,18 +367,6 @@ cp instruction.mif data.mif ../quartus/        # copia para o projeto Quartus
 cd ../dump
 python3 serial_dump.py COM3                    # captura o resultado
 ```
-
----
-
-## Observação
-
-Caso os comandos do powershell não funcionem, rode
-
-```bash
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-```
-
-que será possível rodar os *.ps1
 
 ---
 
