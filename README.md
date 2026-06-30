@@ -78,11 +78,11 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `BNE`     | B    | 1100011 | ❌ |
-| 2 | `BLT`     | B    | 1100011 | ❌ |
-| 3 | `BGE`     | B    | 1100011 | ❌ |
-| 4 | `BLTU`    | B    | 1100011 | ❌ |
-| 5 | `BGEU`    | B    | 1100011 | ❌ |
+| 1 | `BNE`     | B    | 1100011 | ☑️ |
+| 2 | `BLT`     | B    | 1100011 | ☑️ |
+| 3 | `BGE`     | B    | 1100011 | ☑️ |
+| 4 | `BLTU`    | B    | 1100011 | ☑️ |
+| 5 | `BGEU`    | B    | 1100011 | ☑️ |
 
 #### Jumps (J-type)
 
