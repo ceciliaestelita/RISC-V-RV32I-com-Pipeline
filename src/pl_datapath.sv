@@ -293,7 +293,7 @@ module pl_datapath (
         .SrcA      (alu_srca_final),
         .SrcB      (alu_srcb),
         .Operation (ALU_CC),
-        .ALUResult (alu_result_raw), // <--- MODIFICADO: Liga no fio bruto
+        .ALUResult (alu_result_raw), // mudado
         .Zero      (zero)
     );
 
@@ -306,7 +306,7 @@ module pl_datapath (
     assign is_jal  = id_ex.branch && (id_ex.alu_op == 2'b00);
     assign is_jalr = id_ex.branch && (id_ex.alu_op == 2'b11);
 
-    // NOVO: Mux que salva PC+4 no registrador de destino se for Jump. 
+    // NOVO: Mux que salva PC+4 no registrador de destino se for Jump.
     // Caso contrário, salva o resultado normal da ALU.
     assign alu_result = (is_jal || is_jalr) ? (id_ex.pc + 4) : alu_result_raw;
 
@@ -315,10 +315,10 @@ module pl_datapath (
     // Comparador de Branch Dedicado e Cálculo de Alvo
     // =========================================================================
     logic branch_condition_met;
-    
+   
     always_comb begin
         branch_condition_met = 1'b0; // Valor por defeito
-        
+       
         if (id_ex.branch) begin
             case (id_ex.funct3)
                 3'b000: branch_condition_met = (fwd_srca == fwd_srcb);                   // BEQ
@@ -335,7 +335,7 @@ module pl_datapath (
     // O alvo do JALR é (rs1 + imediato) com o bit 0 limpo.
     // Para JAL e Branches normais, o alvo é (PC + imediato).
     assign branch_target = is_jalr ? ((fwd_srca + id_ex.imm_ext) & 32'hFFFFFFFE) : (id_ex.pc + id_ex.imm_ext);
-    
+   
     // O PC deve desviar se a condição do branch for verdadeira OU se for JAL/JALR
     assign pc_src = branch_condition_met || is_jal || is_jalr;
 
@@ -369,41 +369,11 @@ module pl_datapath (
     // =========================================================================
     assign mmio_sel = ex_mem.alu_result[10];
 
-    // --- NOVA LÓGICA DE STORES (SB, SH, SW) ---
-    // =========================================================================
-    logic [1:0]  wr_offset;
-    logic [31:0] dmem_write_data_formatted;
-
-    assign wr_offset = ex_mem.alu_result[1:0];
-
-    always_comb begin
-        case (ex_mem.funct3)
-            3'b000: begin // SB (Store Byte)
-                case (wr_offset)
-                    2'b00: dmem_write_data_formatted = {dmem_rd[31:8],  ex_mem.write_data[7:0]};
-                    2'b01: dmem_write_data_formatted = {dmem_rd[31:16], ex_mem.write_data[7:0], dmem_rd[7:0]};
-                    2'b10: dmem_write_data_formatted = {dmem_rd[31:24], ex_mem.write_data[7:0], dmem_rd[15:0]};
-                    2'b11: dmem_write_data_formatted = {ex_mem.write_data[7:0], dmem_rd[23:0]};
-                endcase
-            end
-            3'b001: begin // SH (Store Halfword)
-                case (wr_offset[1])
-                    1'b0:  dmem_write_data_formatted = {dmem_rd[31:16], ex_mem.write_data[15:0]};
-                    1'b1:  dmem_write_data_formatted = {ex_mem.write_data[15:0], dmem_rd[15:0]};
-                endcase
-            end
-            3'b010: begin // SW (Store Word)
-                dmem_write_data_formatted = ex_mem.write_data;
-            end
-            default: dmem_write_data_formatted = ex_mem.write_data;
-        endcase
-    end
-
     pl_dmem dmem (
         .clk       (clk),
         .MemWrite  (ex_mem.mem_write & ~mmio_sel),
         .addr      (ex_mem.alu_result[9:2]),
-        .WriteData (dmem_write_data_formatted), //dado de escrita formatado (SB/SH/SW)
+        .WriteData (ex_mem.write_data),
         .ReadData  (dmem_rd)
     );
 
@@ -413,7 +383,7 @@ module pl_datapath (
         .MemWrite  (ex_mem.mem_write &  mmio_sel),
         .MemRead   (ex_mem.mem_read  &  mmio_sel),
         .addr      (ex_mem.alu_result[4:2]),
-        .WriteData (dmem_write_data_formatted), //dado de escrita formatado (SB/SH/SW)
+        .WriteData (ex_mem.write_data),
         .SW        (SW),
         .KEY       (KEY),
         .ReadData  (mmio_rd),
@@ -429,7 +399,7 @@ module pl_datapath (
     logic [7:0]  byte_read;
     logic [15:0] hw_read;
     logic [31:0] dmem_read_data_formatted;
-    
+   
     // O offset são os 2 bits menos significativos do endereço calculado
     assign offset = ex_mem.alu_result[1:0];
 
@@ -465,7 +435,7 @@ module pl_datapath (
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
     assign mem_wr_addr = ex_mem.alu_result[9:2];
-    assign mem_wr_data = dmem_write_data_formatted; //dado de escrita formatado (SB/SH/SW)
+    assign mem_wr_data = ex_mem.write_data;
 
     // =========================================================================
     // Registrador MEM/WB
