@@ -69,8 +69,8 @@ Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em System
 
 | # | Instrução | Tipo | Opcode  | Status |
 |---|-----------|------|---------|:------:|
-| 1 | `SB`      | S    | 0100011 | ✅ |
-| 2 | `SH`      | S    | 0100011 | ✅ |
+| 1 | `SB`      | S    | 0100011 | ❌ |
+| 2 | `SH`      | S    | 0100011 | ❌ |
 
 #### Desvios condicionais (B-type)
 
