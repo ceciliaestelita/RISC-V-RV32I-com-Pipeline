@@ -22,16 +22,16 @@ module pl_alu (
 
     always_comb begin
         case (Operation)
-            4'd01:   ALUResult = $signed(SrcA) + $signed(SrcB); // add
-            4'd02:   ALUResult = $signed(SrcA) - $signed(SrcB); // sub
-            4'd04:   ALUResult = SrcA | SrcB;                   // or
-            4'd05:   ALUResult = SrcA & SrcB;                   // and
-            4'd06:   ALUResult = SrcA ^ SrcB;                   // xor
-            4'd07:   ALUResult = SrcA << SrcB[4:0];             // sll
-            4'd08:   ALUResult = SrcA >> SrcB[4:0];             // srl
-            4'd09:   ALUResult = $signed(SrcA) >>> SrcB[4:0];   // sra
+            4'd01:   ALUResult = $signed(SrcA) + $signed(SrcB);  // add
+            4'd02:   ALUResult = $signed(SrcA) - $signed(SrcB);  // sub
+            4'd04:   ALUResult = SrcA | SrcB;                    // or
+            4'd05:   ALUResult = SrcA & SrcB;                    // and
+            4'd06:   ALUResult = SrcA ^ SrcB;                    // xor
+            4'd07:   ALUResult = SrcA << SrcB[4:0];              // sll
+            4'd08:   ALUResult = SrcA >> SrcB[4:0];              // srl
+            4'd09:   ALUResult = $signed(SrcA) >>> SrcB[4:0];    // sra
             4'd11:   ALUResult = 32'($signed(SrcA) < $signed(SrcB)); // slt
-            4'd12:   ALUResult = (SrcA < SrcB) ? 32'b1 : 32'b0;      // sltu (Alinhado com pl_alu_ctrl)
+            4'd12:   ALUResult = (SrcA < SrcB) ? 32'b1 : 32'b0;  // sltu 
             default: ALUResult = 32'b0;
         endcase
     end
