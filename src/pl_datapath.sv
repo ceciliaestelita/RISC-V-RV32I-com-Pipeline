@@ -12,7 +12,7 @@
 // Tratamento de hazards:
 //   Load-use stall : 1 ciclo de bolha (pl_hazard)
 //   RAW data       : forwarding EX/MEM -> EX e MEM/WB -> EX (pl_forward)
-//   Branch taken   : flush de IF e ID (2 NOPs) na resolucao em EX
+//   Branch taken   : flush de IF e ID (2 NOPs) na resolucao in EX
 //
 // Decodificacao de endereco (estagio MEM):
 //   alu_result[10] = 0 -> memoria de dados  (0x000-0x3FF)
@@ -241,7 +241,7 @@ module pl_datapath (
     assign Funct7_EX = id_ex.funct7;
     assign ALUOp_EX  = id_ex.alu_op;
 
-// =========================================================================
+    // =========================================================================
     // EX -- Forwarding, ALU, resolucao de branch
     // =========================================================================
     pl_forward forward (
@@ -277,9 +277,9 @@ module pl_datapath (
     logic [31:0] alu_srca_final;
     always_comb begin
         case (id_ex.alu_src_a)
-            2'b01:   alu_srca_final = id_ex.pc;           // AUIPC usa o PC
-            2'b10:   alu_srca_final = 32'b0;              // LUI usa Zero
-            default: alu_srca_final = fwd_srca;           // Normal (rs1 via forwarding)
+            2'b01:   alu_srca_final = id_ex.pc;            // AUIPC usa o PC
+            2'b10:   alu_srca_final = 32'b0;               // LUI usa Zero
+            default: alu_srca_final = fwd_srca;            // Normal (rs1 via forwarding)
         endcase
     end
 
@@ -293,7 +293,7 @@ module pl_datapath (
         .SrcA      (alu_srca_final),
         .SrcB      (alu_srcb),
         .Operation (ALU_CC),
-        .ALUResult (alu_result_raw), // mudado
+        .ALUResult (alu_result_raw), 
         .Zero      (zero)
     );
 
@@ -306,10 +306,9 @@ module pl_datapath (
     assign is_jal  = id_ex.branch && (id_ex.alu_op == 2'b00);
     assign is_jalr = id_ex.branch && (id_ex.alu_op == 2'b11);
 
-    // NOVO: Mux que salva PC+4 no registrador de destino se for Jump.
+    // Mux que salva PC+4 no registrador de destino se for Jump.
     // Caso contrário, salva o resultado normal da ALU.
     assign alu_result = (is_jal || is_jalr) ? (id_ex.pc + 4) : alu_result_raw;
-
 
     // =========================================================================
     // Comparador de Branch Dedicado e Cálculo de Alvo
@@ -358,7 +357,7 @@ module pl_datapath (
             ex_mem.mem_read    <= id_ex.mem_read;
             ex_mem.mem_write   <= id_ex.mem_write;
             ex_mem.alu_result  <= alu_result;
-            ex_mem.write_data  <= fwd_srcb;   // rs2 adiantado (para SW/MMIO)
+            ex_mem.write_data  <= fwd_srcb;   // rs2 adiantado (para SW/MMIO/SB/SH)
             ex_mem.rd          <= id_ex.rd;
             ex_mem.funct3      <= id_ex.funct3;
         end
@@ -369,14 +368,60 @@ module pl_datapath (
     // =========================================================================
     assign mmio_sel = ex_mem.alu_result[10];
 
+    // O offset são os 2 bits menos significativos do endereço calculado
+    logic [1:0] offset;
+    assign offset = ex_mem.alu_result[1:0];
+
+    // === NOVO: ADICIONADO PARA STORES (SB, SH, SW) ===
+    logic [31:0] mem_write_data_formatted;
+    logic [3:0]  mem_write_mask;
+    
+    // 1. Alinhamento e Replicação de Dados de Escrita
+    always_comb begin
+        case (ex_mem.funct3)
+            3'b000:  mem_write_data_formatted = {4{ex_mem.write_data[7:0]}};  // SB: replica o byte 4 vezes
+            3'b001:  mem_write_data_formatted = {2{ex_mem.write_data[15:0]}}; // SH: replica a halfword 2 vezes
+            default: mem_write_data_formatted = ex_mem.write_data;           // SW: palavra inteira
+        endcase
+    end
+
+    // 2. Geração da Máscara de Escrita (Byte Enables) baseada no offset
+    always_comb begin
+        mem_write_mask = 4'b0000; // Por padrão, nenhuma escrita ocorre
+        
+        // Só gera a máscara se for uma operação de escrita de fato e NÃO for MMIO
+        if (ex_mem.mem_write && !mmio_sel) begin
+            case (ex_mem.funct3)
+                3'b000: begin // SB (Store Byte)
+                    case (offset)
+                        2'b00: mem_write_mask = 4'b0001;
+                        2'b01: mem_write_mask = 4'b0010;
+                        2'b10: mem_write_mask = 4'b0100;
+                        2'b11: mem_write_mask = 4'b1000;
+                    endcase
+                end
+                3'b001: begin // SH (Store Halfword)
+                    case (offset[1])
+                        1'b0:    mem_write_mask = 4'b0011; // Metade inferior
+                        1'b1:    mem_write_mask = 4'b1100; // Metade superior
+                    endcase
+                end
+                3'b010:  mem_write_mask = 4'b1111; // SW (Store Word - escreve tudo)
+                default: mem_write_mask = 4'b0000;
+            endcase
+        end
+    end
+
+    // Instanciação da dmem adaptada para receber a Máscara de 4 bits (no lugar do bit simples de MemWrite)
     pl_dmem dmem (
         .clk       (clk),
-        .MemWrite  (ex_mem.mem_write & ~mmio_sel),
+        .MemWrite  (mem_write_mask),               // MUDADO: agora passa a máscara de 4 bits
         .addr      (ex_mem.alu_result[9:2]),
-        .WriteData (ex_mem.write_data),
+        .WriteData (mem_write_data_formatted),      // MUDADO: passa o dado replicado/alinhado
         .ReadData  (dmem_rd)
     );
 
+    // MMIO continua operando em 32-bits Word normal
     pl_mmio mmio (
         .clk       (clk),
         .rst_n     (rst_n),
@@ -393,15 +438,10 @@ module pl_datapath (
         .UART_RXD  (UART_RXD)
     );
 
-
-    // --- NOVA LÓGICA DE LOADS (LB, LH, LW, LBU, LHU) ---
-    logic [1:0]  offset;
+    // --- LÓGICA DE LOADS (LB, LH, LW, LBU, LHU) ---
     logic [7:0]  byte_read;
     logic [15:0] hw_read;
     logic [31:0] dmem_read_data_formatted;
-   
-    // O offset são os 2 bits menos significativos do endereço calculado
-    assign offset = ex_mem.alu_result[1:0];
 
     always_comb begin
         // 1. Extrair o byte correto baseado no offset
@@ -435,7 +475,7 @@ module pl_datapath (
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
     assign mem_wr_addr = ex_mem.alu_result[9:2];
-    assign mem_wr_data = ex_mem.write_data;
+    assign mem_wr_data = mem_write_data_formatted;     // Atualizado para o testbench ver o dado formatado
 
     // =========================================================================
     // Registrador MEM/WB
@@ -455,7 +495,5 @@ module pl_datapath (
             mem_wb.rd         <= ex_mem.rd;
         end
     end
-
-    // WB: wb_data = mem_to_reg ? read_data : alu_result  (definido acima, no bloco ID)
 
 endmodule
