@@ -475,8 +475,8 @@ module pl_datapath (
     // Saidas de observabilidade para o testbench
     assign mem_wr_en   = ex_mem.mem_write & ~mmio_sel;
     assign mem_wr_addr = ex_mem.alu_result[9:2];
-    assign mem_wr_data = mem_write_data_formatted;     // Atualizado para o testbench ver o dado formatado
-
+    assign mem_wr_data = mem_write_data_formatted;     
+    
     // =========================================================================
     // Registrador MEM/WB
     // =========================================================================
