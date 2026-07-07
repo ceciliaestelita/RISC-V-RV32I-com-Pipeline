@@ -212,9 +212,9 @@ rv32i_pipelined_base_project/
 
 ## Como simular (ModelSim)
 
-1. Abra o ModelSim e carregue o projeto `modelsim/rv32i_pipelined_base_project.mpf`.
-2. Compile todos os arquivos em `src/` — compilar `pl_pipe_pkg.sv` primeiro.
-3. Inicie a simulação com o top `pl_cpu_tb`.
+1. Abra o ModelSim e carregue o projeto `modelsim/rv32i_pipelined_base_project.mpf`;
+2. Compile todos os arquivos em `src/` — compilar `pl_pipe_pkg.sv` primeiro;
+3. Inicie a simulação com o top `pl_cpu_tb`;
 4. Execute `run -all`.
 
 O testbench detecta o halt automaticamente (repetição periódica do PC causada pelo `beq x0, x0, 0`), imprime o estado final dos registradores e da memória, e compara a saída com `modelsim/golden.txt`.
