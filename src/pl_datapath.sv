@@ -379,9 +379,9 @@ module pl_datapath (
     // 1. Alinhamento e Replicação de Dados de Escrita
     always_comb begin
         case (ex_mem.funct3)
-            3'b000:  mem_write_data_formatted = {4{ex_mem.write_data[7:0]}};  // SB: replica o byte 4 vezes
-            3'b001:  mem_write_data_formatted = {2{ex_mem.write_data[15:0]}}; // SH: replica a halfword 2 vezes
-            default: mem_write_data_formatted = ex_mem.write_data;           // SW: palavra inteira
+            3'b000:  mem_write_data_formatted = {4{ex_mem.write_data[7:0]}};  // SB: replica o byte 4 vezes (1 byte)
+            3'b001:  mem_write_data_formatted = {2{ex_mem.write_data[15:0]}}; // SH: replica a halfword 2 vezes (2 bytes)
+            default: mem_write_data_formatted = ex_mem.write_data;           // SW: palavra inteira (4bytes)
         endcase
     end
 
@@ -406,7 +406,7 @@ module pl_datapath (
                         1'b1:    mem_write_mask = 4'b1100; // Metade superior
                     endcase
                 end
-                3'b010:  mem_write_mask = 4'b1111; // SW (Store Word - escreve tudo)
+                3'b010:  mem_write_mask = 4'b1111; // SW (Store Word - escreve a palavra toda (4 bytes))
                 default: mem_write_mask = 4'b0000;
             endcase
         end
