@@ -1,5 +1,10 @@
 # RV32I Pipelined Base Project
 
+![Status](https://img.shields.io/badge/Status-Completed-brightgreen)
+![Language](https://img.shields.io/badge/Language-SystemVerilog-blue)
+![Processor](https://img.shields.io/badge/Processor-RISC_V-orange)
+![Application](https://img.shields.io/badge/Application-Pipeline-red)
+
 Processador RISC-V de 32 bits com pipeline de 5 estágios implementado em SystemVerilog, baseado nas seções 4.6 a 4.10 de *Computer Organization and Design: RISC-V Edition* (Patterson & Hennessy). O projeto tem como plataforma alvo a placa **DE2-115** (Intel Cyclone IV E) e é estruturado para servir de base para extensões do conjunto de instruções pelos alunos.
 
 ---
